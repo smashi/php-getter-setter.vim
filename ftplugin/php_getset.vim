@@ -671,22 +671,22 @@ endif
 
 " Add commands, unless already set.
 if !exists(":InsertGetterSetter")
-  command -range -buffer
+  command -range
     \ InsertGetterSetter
     \ :<line1>,<line2>call s:InsertGetterSetter('a')
 endif
 if !exists(":InsertGetterOnly")
-  command -range -buffer
+  command -range
     \ InsertGetterOnly
     \ :<line1>,<line2>call s:InsertGetterSetter('g')
 endif
 if !exists(":InsertSetterOnly")
-  command -range -buffer
+  command -range
     \ InsertSetterOnly
     \ :<line1>,<line2>call s:InsertGetterSetter('s')
 endif
 if !exists(":InsertBothGetterSetter")
-  command -range -buffer
+  command -range
     \ InsertBothGetterSetter
     \ :<line1>,<line2>call s:InsertGetterSetter('b')
 endif
