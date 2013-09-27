@@ -524,7 +524,7 @@ endif
 " Checks to see if any getter/setter exists.
 if !exists("*s:AlreadyExists")
   function s:AlreadyExists()
-    return search('\s+\(get\|set\)' . s:funcname . '\_s*([^)]*)\_s*{', 'w')
+    return search('\(\s+get\|set\)' . s:funcname . '\_s*([^)]*)\_s*{', 'w')
   endfunction
 endif
 
