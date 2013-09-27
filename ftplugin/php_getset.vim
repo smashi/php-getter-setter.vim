@@ -506,27 +506,41 @@ if !exists("*s:ProcessVariable")
     " If any getter or setter already exists, then just return as there
     " is nothing to be done.  The assumption is that the user already
     " made his choice.
-    if s:AlreadyExists()
-      return
+    if !s:AlreadyExistsGetter()
+        if s:getter
+          call s:InsertGetter()
+        endif
     endif
 
-    if s:getter
-      call s:InsertGetter()
+    if !s:AlreadyExistsSetter()
+        if s:setter
+          call s:InsertSetter()
+        endif
     endif
 
-    if s:setter
-      call s:InsertSetter()
-    endif
 
   endfunction
 endif
 
 " Checks to see if any getter/setter exists.
-if !exists("*s:AlreadyExists")
-  function s:AlreadyExists()
-    return search('\(\s+get\|set\)' . s:funcname . '\_s*([^)]*)\_s*{', 'w')
+if !exists("*s:AlreadyExistsGetter")
+  function s:AlreadyExistsGetter()
+    return s:SearchFunctionName('get')
   endfunction
 endif
+
+if !exists("*s:AlreadyExistsSetter")
+  function s:AlreadyExistsSetter()
+    return s:SearchFunctionName('set')
+  endfunction
+endif
+
+if !exists("*s:SearchFunctionName")  
+  function s:SearchFunctionName(type)
+    return search('\(\s\)\(' . a:type . '\)' . s:funcname . '\_s*([^)]*)\_s*{', 'w')
+  endfunction
+endif
+
 
 " Inserts a getter by selecting the appropriate template to use and then
 " populating the template parameters with actual values.
