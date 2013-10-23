@@ -231,6 +231,10 @@
 " I make only some modifications in the original code java_getset.vim.
 
 " Only do this when not done yet for this buffer
+if (!exists("g:snips_author"))
+  let g:snips_author = 'me'
+endif
+
 if exists("b:did_phpgetset_ftplugin")
   finish
 endif
@@ -254,14 +258,15 @@ if exists("b:phpgetset_getterTemplate")
   let s:phpgetset_getterTemplate = b:phpgetset_getterTemplate
 else
   let s:phpgetset_getterTemplate =
-    \ "    \n" .
+    \ "\n" .
+    \ "\n" .
     \ "    /**\n" .
-    \ "     * Get %varname%.\n" .
-    \ "     *\n" .
-    \ "     * @return %varname%.\n" .
+    \ "     * @author " . g:snips_author . "\n" .
+    \ "     * @access public\n" .
+    \ "     * \n" .
+    \ "     * @return %type%\n" .
     \ "     */\n" .
-    \ "    public function %funcname%()\n" .
-    \ "    {\n" .
+    \ "    public function %funcname%() {\n" .
     \ "        return $this->%varname%;\n" .
     \ "    }"
 endif
@@ -272,16 +277,18 @@ if exists("b:phpgetset_setterTemplate")
   let s:phpgetset_setterTemplate = b:phpgetset_setterTemplate
 else
   let s:phpgetset_setterTemplate =
-  \ "    \n" .
-  \ "    /**\n" .
-  \ "     * Set %varname%.\n" .
-  \ "     *\n" .
-  \ "     * @param %varname% the value to set.\n" .
-  \ "     */\n" .
-  \ "    public function %funcname%($%varname%)\n" .
-  \ "    {\n" .
-  \ "        $this->%varname% = $%varname%;\n" .
-  \ "    }"
+    \ "\n" .
+    \ "\n" .
+    \ "    /**\n" .
+    \ "     * @author " . g:snips_author . "\n" .
+    \ "     * @access public\n" .
+    \ "     * \n" .
+    \ "     * @param %type% %varname%\n" .
+    \ "     * @return void\n" .
+    \ "     */\n" .
+    \ "    public function %funcname%($%varname%) {\n" .
+    \ "        $this->%varname% = $%varname%;\n" .
+    \ "    }"
 endif
 
 
@@ -318,10 +325,14 @@ let s:firstline = 0
 " The last line of the block selected
 let s:lastline  = 0
 
+" type of the property
+let s:type = ''
+
 " Regular expressions used to match property statements
 let s:phpname = '[a-zA-Z_$][a-zA-Z0-9_$]*'
 let s:brackets = '\(\s*\(\[\s*\]\)\)\='
 let s:variable = '\(\s*\)\(\([private,protected,public]\s\+\)*\)\$\(' . s:phpname . '\)\s*\(;\|=[^;]\+;\)'
+let s:type = '@var\(\s*\)\(' . s:phpname . '\)\(\s*\)'
 
 " The main entry point. This function saves the current position of the
 " cursor without the use of a mark (see note below)  Then the selected
@@ -468,14 +479,22 @@ endif
 "
 if !exists("*s:ProcessRegion")
   function s:ProcessRegion(region)
+
+    let startType = match(a:region, s:type, 0)
+    let endType = matchend(a:region, s:type, 0)
+
     let startPosition = match(a:region, s:variable, 0)
     let endPosition = matchend(a:region, s:variable, 0)
 
     while startPosition != -1
       let result = strpart(a:region, startPosition, endPosition - startPosition)
+      let type   = strpart(a:region, startType, endType - startType)
 
       "call s:DebugParsing(result)
-      call s:ProcessVariable(result)
+      call s:ProcessVariable(result, type)
+
+      let startType =  match(a:region, s:type, endType)
+      let endType = matchend(a:region, s:type, endType)
 
       let startPosition = match(a:region, s:variable, endPosition)
       let endPosition = matchend(a:region, s:variable, endPosition)
@@ -498,10 +517,11 @@ endif
 " funcname  = 'Name'
 "
 if !exists("*s:ProcessVariable")
-  function s:ProcessVariable(variable)
+  function s:ProcessVariable(variable, type)
     let s:indent    = substitute(a:variable, s:variable, '\1', '')
     let s:varname   = substitute(a:variable, s:variable, '\4', '')
-    let s:funcname  = toupper(s:varname[0]) . strpart(s:varname, 1)
+    let s:funcname  = '_' . s:varname
+    let s:typestr   = substitute(a:type, s:type, '\2', '')
 
     " If any getter or setter already exists, then just return as there
     " is nothing to be done.  The assumption is that the user already
@@ -518,12 +538,15 @@ if !exists("*s:ProcessVariable")
         endif
     endif
 
+    if s:setter
+      call s:InsertSetter()
+    endif
 
   endfunction
 endif
 
 " Checks to see if any getter/setter exists.
-if !exists("*s:AlreadyExistsGetter")
+if !exists("s:AlreadyExistsGetter")
   function s:AlreadyExistsGetter()
     return s:SearchFunctionName('get')
   endfunction
@@ -534,13 +557,12 @@ if !exists("*s:AlreadyExistsSetter")
     return s:SearchFunctionName('set')
   endfunction
 endif
-
+ 
 if !exists("*s:SearchFunctionName")  
   function s:SearchFunctionName(type)
     return search('\(\s\)\(' . a:type . '\)' . s:funcname . '\_s*([^)]*)\_s*{', 'w')
   endfunction
 endif
-
 
 " Inserts a getter by selecting the appropriate template to use and then
 " populating the template parameters with actual values.
@@ -552,6 +574,7 @@ if !exists("*s:InsertGetter")
 
     let method = substitute(method, '%varname%', s:varname, 'g')
     let method = substitute(method, '%funcname%', 'get' . s:funcname, 'g')
+    let method = substitute(method, '%type%', s:typestr, 'g')
 
     call s:InsertMethodBody(method)
 
@@ -567,6 +590,7 @@ if !exists("*s:InsertSetter")
 
     let method = substitute(method, '%varname%', s:varname, 'g')
     let method = substitute(method, '%funcname%', 'set' . s:funcname, 'g')
+    let method = substitute(method, '%type%', s:typestr, 'g')
 
     call s:InsertMethodBody(method)
 
@@ -685,22 +709,22 @@ endif
 
 " Add commands, unless already set.
 if !exists(":InsertGetterSetter")
-  command -range
+  command -range -buffer
     \ InsertGetterSetter
     \ :<line1>,<line2>call s:InsertGetterSetter('a')
 endif
 if !exists(":InsertGetterOnly")
-  command -range
+  command -range -buffer
     \ InsertGetterOnly
     \ :<line1>,<line2>call s:InsertGetterSetter('g')
 endif
 if !exists(":InsertSetterOnly")
-  command -range
+  command -range -buffer
     \ InsertSetterOnly
     \ :<line1>,<line2>call s:InsertGetterSetter('s')
 endif
 if !exists(":InsertBothGetterSetter")
-  command -range
+  command -range -buffer
     \ InsertBothGetterSetter
     \ :<line1>,<line2>call s:InsertGetterSetter('b')
 endif
