@@ -283,7 +283,7 @@ else
     \ "     * @author " . g:snips_author . "\n" .
     \ "     * @access public\n" .
     \ "     * \n" .
-    \ "     * @param %type% %varname%\n" .
+    \ "     * @param %type% $%varname%\n" .
     \ "     * @return void\n" .
     \ "     */\n" .
     \ "    public function %funcname%($%varname%) {\n" .
